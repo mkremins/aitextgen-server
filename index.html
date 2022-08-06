@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>aitextgen-server</title>
+    </head>
+    <body>
+        <input id="promptInput" type="text">
+        <button id="submitPromptButton">Submit</button>
+        <ul id="repliesUl"></ul>
+        <script>
+        //const messagesAwaitingReplies = {};
+        const ws = new WebSocket("ws://127.0.0.1:5678/");
+        const promptInput = document.getElementById("promptInput");
+        const submitPromptButton = document.getElementById("submitPromptButton");
+        const repliesUl = document.getElementById("repliesUl");
+
+        submitPromptButton.onclick = function(event) {
+            // get the text and ID of this request
+            const text = promptInput.value;
+            const id = Date.now();
+            // render this request as a DOM element
+            const messageLi = document.createElement("li");
+            const promptSpan = document.createElement("strong");
+            promptSpan.innerText = text;
+            messageLi.id = id;
+            messageLi.appendChild(promptSpan);
+            repliesUl.appendChild(messageLi);
+            // send the request over the websocket
+            const msg = JSON.stringify({text, id});
+            ws.send(msg);
+        };
+
+        ws.onmessage = function (event) {
+            const data = event.data;
+            const message = JSON.parse(data);
+            const messageLi = document.getElementById(message.id);
+            const continuationSpan = document.createElement("span");
+            continuationSpan.innerText = message.text;
+            messageLi.appendChild(continuationSpan);
+        };
+
+        ws.addEventListener("open", function (event) {
+            console.log("Websocket ready!");
+        });
+        </script>
+    </body>
+</html>
