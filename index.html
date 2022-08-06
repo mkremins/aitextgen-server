@@ -2,46 +2,102 @@
 <html>
     <head>
         <title>aitextgen-server</title>
+        <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html {
+            font-size: 18px;
+        }
+        body {
+            font-family: Georgia, serif;
+            margin: 0 auto;
+            padding: 1rem 0;
+            width: 60ch;
+        }
+        #promptInput {
+            background: #eee;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+            min-height: 2ch;
+            padding: 0.5rem;
+            width: 100%;
+        }
+        #submitPromptButton {
+            background: #555;
+            border: none;
+            border-radius: 0.25rem;
+            color: #fff;
+            cursor: pointer;
+            display: block;
+            font-family: inherit;
+            font-size: 0.9rem;
+            height: 1.5rem;
+            margin: 0 auto;
+            margin-bottom: 1rem;
+            padding: 0.1rem;
+            width: 50%;
+        }
+        .message {
+            border: 1px solid #000;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+        }
+        </style>
     </head>
     <body>
-        <input id="promptInput" type="text">
-        <button id="submitPromptButton">Submit</button>
-        <ul id="repliesUl"></ul>
+        <div contenteditable id="promptInput"></div>
+        <button id="submitPromptButton">Generate (Cmd+Enter)</button>
+        <div id="repliesDiv"></div>
         <script>
         //const messagesAwaitingReplies = {};
         const ws = new WebSocket("ws://127.0.0.1:5678/");
         const promptInput = document.getElementById("promptInput");
         const submitPromptButton = document.getElementById("submitPromptButton");
-        const repliesUl = document.getElementById("repliesUl");
+        const repliesDiv = document.getElementById("repliesDiv");
 
-        submitPromptButton.onclick = function(event) {
+        function submitPrompt() {
             // get the text and ID of this request
-            const text = promptInput.value;
+            const text = promptInput.innerText;
             const id = Date.now();
+            // clear the prompt input
+            promptInput.innerText = "";
             // render this request as a DOM element
-            const messageLi = document.createElement("li");
+            const messageDiv = document.createElement("div");
+            messageDiv.className = "message";
             const promptSpan = document.createElement("strong");
             promptSpan.innerText = text;
-            messageLi.id = id;
-            messageLi.appendChild(promptSpan);
-            repliesUl.appendChild(messageLi);
+            messageDiv.id = id;
+            messageDiv.appendChild(promptSpan);
+            repliesDiv.prepend(messageDiv);
             // send the request over the websocket
             const msg = JSON.stringify({text, id});
             ws.send(msg);
         };
 
+        document.body.addEventListener("keydown", function(e) {
+            if(!(e.keyCode == 13 && e.metaKey)) return;
+            submitPrompt();
+        });
+
+        submitPromptButton.onclick = submitPrompt;
+
         ws.onmessage = function (event) {
             const data = event.data;
             const message = JSON.parse(data);
-            const messageLi = document.getElementById(message.id);
+            const messageDiv = document.getElementById(message.id);
             const continuationSpan = document.createElement("span");
-            continuationSpan.innerText = message.text;
-            messageLi.appendChild(continuationSpan);
+            continuationSpan.innerText = message.text.replace(messageDiv.innerText, "");
+            messageDiv.appendChild(continuationSpan);
         };
 
         ws.addEventListener("open", function (event) {
             console.log("Websocket ready!");
         });
+
+        promptInput.focus();
         </script>
     </body>
 </html>
